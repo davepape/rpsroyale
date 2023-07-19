@@ -25,15 +25,41 @@ async function getDb() {
 
 
 
+function welcomePage(req, res) {
+    res.render('welcome');
+    }
+
+
 function aboutPage(req, res) {
     res.render('about');
     }
+
+function attackPage(req, res) {
+    res.render('attack');
+    }
+
+function defendPage(req, res) {
+    res.render('defend');
+    }
+
+function scoreboardPage(req, res) {
+    res.render('scoreboard');
+    }
+
+function settingsPage(req, res) {
+    res.render('settings');
+    }
+
+function resultsPage(req, res) {
+    res.render('results');
+    }
+
 
 async function index(req, res) {
     if (req.session.rpsr_user)
         home(req, res);
     else
-        loginPage(req, res);
+        welcomePage(req, res);
     }
 
 
@@ -304,10 +330,6 @@ async function updatePoints(req,stake) {
     }
 
 
-function loginPage(req, res) {
-    res.render('welcome');
-    }
-
 
 async function login(req, res) {
     let db = await getDb();
@@ -377,10 +399,14 @@ const express = require('express');
 let router = express.Router();
 
 router.get('/', index);
-router.get('/loginpage', loginPage);
 router.get('/home', home);
+router.get('/welcome', welcomePage);
 router.get('/about', aboutPage);
 router.get('/scoreboard', scoreboard);
+router.get('/attack', attackPage);
+router.get('/defend', defendPage);
+router.get('/settings', settingsPage);
+router.get('/results', resultsPage);
 router.get('/newplay', newplay);
 router.post('/makeplay', makeplay);
 router.get('/match', match);
