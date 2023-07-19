@@ -26,32 +26,37 @@ async function getDb() {
 
 
 function welcomePage(req, res) {
-    res.render('welcome');
+    res.render('welcome', { username: ""} );
     }
 
-
 function aboutPage(req, res) {
-    res.render('about');
+    let username = req.session.username;
+    res.render('about', { username: username });
     }
 
 function attackPage(req, res) {
-    res.render('attack');
+    let username = req.session.username;
+    res.render('attack', { username: username });
     }
 
 function defendPage(req, res) {
-    res.render('defend');
+    let username = req.session.username;
+    res.render('defend', { username: username });
     }
 
 function scoreboardPage(req, res) {
-    res.render('scoreboard');
+    let username = req.session.username;
+    res.render('scoreboard', { username: username });
     }
 
 function settingsPage(req, res) {
-    res.render('settings');
+    let username = req.session.username;
+    res.render('settings', { username: username });
     }
 
 function resultsPage(req, res) {
-    res.render('results');
+    let username = req.session.username;
+    res.render('results', { username: username });
     }
 
 
@@ -64,7 +69,7 @@ async function index(req, res) {
 
 
 async function home(req, res) {
-    if (!req.session.rpsr_user) { return res.redirect('loginpage'); }
+    if (!req.session.rpsr_user) { return res.redirect('welcomepage'); }
     let db = await getDb();
     let collection = db.collection("users");
     let query = { _id: ObjectID(req.session.rpsr_user._id) };
@@ -72,7 +77,7 @@ async function home(req, res) {
         if (err) { console.log(err); return res.sendStatus(500); }
         findPlayerResults(req.session.rpsr_user._id).then(function (myresults) {
             findPlayerPlays(req.session.rpsr_user._id).then(function (myplays) {
-                res.render('home', { user: result, results: myresults, plays: myplays });
+                res.render('home', { username: req.session.username, results: myresults, plays: myplays });
                 });
             });
         });
@@ -184,6 +189,7 @@ function oppositeResult(r) {
     }
 
 
+/*
 async function scoreboard(req, res) {
     let db = await getDb();
     let collection = db.collection("users");
@@ -192,16 +198,17 @@ async function scoreboard(req, res) {
         res.render('scoreboard', { players: result, user: req.session.rpsr_user });
         });
     }
+*/
 
 
 function newplay(req, res) {
-    if (!req.session.rpsr_user) { return res.redirect('loginpage'); }
+    if (!req.session.rpsr_user) { return res.redirect('welcomepage'); }
     res.render('newplay', { user: req.session.rpsr_user });
     }
 
 
 async function makeplay(req,res) {
-    if (!req.session.rpsr_user) { return res.redirect('loginpage'); }
+    if (!req.session.rpsr_user) { return res.redirect('welcomepage'); }
     let move = getMove(req.body);
     let stake = await validateStake(req);
     console.log(`makeplay ${req.session.rpsr_user.screenname} ${stake} ${move}`);
@@ -221,7 +228,7 @@ async function makeplay(req,res) {
 
 
 async function match(req, res) {
-    if (!req.session.rpsr_user) { return res.redirect('loginpage'); }
+    if (!req.session.rpsr_user) { return res.redirect('welcomepage'); }
     let db = await getDb();
     let collection = db.collection("plays");
     let query = { playerid: { $ne: req.session.rpsr_user._id } };
@@ -233,7 +240,7 @@ async function match(req, res) {
 
 
 async function makematch(req,res) {
-    if (!req.session.rpsr_user) { return res.redirect('loginpage'); }
+    if (!req.session.rpsr_user) { return res.redirect('welcomepage'); }
     console.log(`makematch ${req.body.play} ${getMove(req.body)}`);
     let mymove = getMove(req.body);
     let mystake = await validateStake(req);
@@ -331,6 +338,7 @@ async function updatePoints(req,stake) {
 
 
 
+/*
 async function login(req, res) {
     let db = await getDb();
     let collection = db.collection("users");
@@ -353,21 +361,22 @@ async function login(req, res) {
             }
         });
     }
-
+*/
 
 async function newAccount(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) { return res.render('error', { errors: errors.array() }); }
     let db = await getDb();
     let collection = db.collection("users");
-    let query = { email: new RegExp(`^${req.body.username}$`,'i') };
+    let query = { email: new RegExp(`^${req.body.yourname}$`,'i') };
     let numExisting = await collection.count(query);
     if (numExisting == 0) {
-        let passwordhash = await bcrypt.hash(req.body.password, 10);
-        let obj = { email: req.body.username, screenname: req.body.screenname, password: passwordhash, profile: req.body.profile, points: STARTING_POINTS };
+        let obj = { screenname: req.body.yourname, email: "", password: "x", points: STARTING_POINTS };
         collection.insertOne(obj, function (err,result) {
             if (err) { console.log(err); return res.sendStatus(500); }
-            login(req,res);
+            req.session.rpsr_user = result;
+            req.session.username = obj.screenname;
+            res.redirect(`home`);
             });
         }
     else {
@@ -402,7 +411,7 @@ router.get('/', index);
 router.get('/home', home);
 router.get('/welcome', welcomePage);
 router.get('/about', aboutPage);
-router.get('/scoreboard', scoreboard);
+router.get('/scoreboard', scoreboardPage);
 router.get('/attack', attackPage);
 router.get('/defend', defendPage);
 router.get('/settings', settingsPage);
@@ -411,10 +420,9 @@ router.get('/newplay', newplay);
 router.post('/makeplay', makeplay);
 router.get('/match', match);
 router.post('/makematch', makematch);
-router.post('/login', login);
 router.get('/logout', logout);
 router.get('/loginerror', loginError);
-router.post('/newaccount', body('username').isEmail(), body('password').isLength({min:5}), newAccount);
+router.post('/newaccount', newAccount);
 router.get('/newaccounterror', newAccountError);
 
 module.exports = router;

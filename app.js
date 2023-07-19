@@ -13,7 +13,7 @@ app.use(session({ secret: 'fnord',
                   store: MongoStore.create({ mongoUrl: sess_uri }),
                   resave: false,
                   saveUninitialized: false,
-                  cookie: { maxAge: 24*60*60*1000 }}))
+                  cookie: { maxAge: 365*24*60*60*1000 }}))
 
 
 /* Assuming all our pages are dynamically generated, this tells browsers not to cache anything.  */
