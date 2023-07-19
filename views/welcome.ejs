@@ -1,0 +1,19 @@
+<%- include('header'); %>
+  <div class="row">
+    <div class="md-8 text-center p-3">
+    Welcome to Rock-Paper-Scissors Royale!
+    </div>
+  </div>
+  <div class="row">
+    <div class="md-8 text-center p-3">
+    Would you like to set a username?
+      <form method="POST" action="/setname">
+      <input name="yourname" id="yourname" type="text" value="" placeholder="your name here" class="form-control">
+      <input type="submit" name="submitter" value="That's my name!" class="btn btn-primary">
+      </form>
+    </div>
+    <div class="md-8 text-center p-3">
+      <a id="nonamebutton" href="/randomname" class="btn btn-primary">No! Pick one for me</a>
+    </div>
+  </div>
+<%- include('footer'); %>

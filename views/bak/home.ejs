@@ -1,0 +1,47 @@
+<% let scripting=`
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+$(document).ready(function () {
+    });
+</script>
+`;
+%>
+<%- include('header', {opts: scripting}); %>
+
+<h1><%= user.screenname %></h1>
+<div>
+<ul class="horizontallist">
+<li>points: <%= user.points %></li>
+<ii>rank: ???</li>
+</ul>
+</div>
+
+<div>
+<h2>recent results</h2>
+<table>
+<tr><th>name</th><th>result</th><th>points</th><th>time</th></tr>
+<% for (let i=0; i < results.length; i++) { %>
+<tr>
+<td><%= results[i].otherPlayer %></td>
+<td><%= results[i].result %></td>
+<td><%= results[i].points %></td>
+<td><%= results[i].time %></td>
+</tr>
+<% } %>
+</table>
+</div>
+
+<div>
+<h2>open plays</h2>
+<table>
+<% for (let i=0; i < plays.length; i++) { %>
+<tr>
+<td><%= plays[i].move %></td>
+<td>stake: <%= plays[i].stake %></td>
+</tr>
+<% } %>
+</table>
+</div>
+
+<%- include('footer'); %>

@@ -1,0 +1,15 @@
+<%- include('header'); %>
+
+<h1>scoreboard</h1>
+
+<table>
+<tr><th>name</th><th>score</th></tr>
+<% for (let i=0; i < players.length; i++) { %>
+<tr>
+<td><%= players[i].screenname %></td>
+<td><%= players[i].points %></td>
+</tr>
+<% } %>
+</table>
+
+<%- include('footer'); %>

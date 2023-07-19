@@ -1,0 +1,24 @@
+<%- include('header'); %>
+
+<h1>match</h1>
+
+<table>
+<tr><th>player</th><th>your stake</th><th>your move</th></tr>
+
+<% for (let i=0; i < plays.length; i++) { %>
+<form action="makematch" method="POST">
+<input type="hidden" name="play" value="<%= plays[i]._id %>">
+<tr><td><%= plays[i].playername %></td>
+<td><input type="text" name="stake" value="1" size="4"></td>
+<td>
+<ul class="horizontallist">
+<li><input type="submit" name="rock" value="rock"></li>
+<li><input type="submit" name="paper" value="paper"></li>
+<li><input type="submit" name="scissors" value="scissors"></li>
+</ul>
+</td>
+</tr>
+</form>
+<% } %>
+
+<%- include('footer'); %>

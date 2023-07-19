@@ -1,0 +1,11 @@
+<%- include('header'); %>
+
+<h1>error</h1>
+
+<% for (let i=0; i < errors.length; i++) { %>
+<p><%= errors[i].param %>: <%= errors[i].msg %></p>
+<% } %>
+
+<p><a href=".">return to main page</a></p>
+
+<%- include('footer'); %>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<title>RPS Royale</title>
+<link href="style.css" rel="stylesheet" type="text/css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<% if (locals.opts) { %><%- opts %><% } %>
+</head>
+    
+<body>
+<% if (locals.user) { %>
+<header id="menu">
+<nav>
+<a href=".">RPSRoyale</a>
+<span><%= user.screenname %></span>
+<a href="newplay">new play</a>
+<a href="match">match</a>
+<a href="scoreboard">scoreboard</a>
+<a href="logout"><span class="material-icons">logout</span></a>
+</nav>
+</header>
+<% } else { %>
+<header id="menu">
+<nav>
+<a href=".">RPSRoyale</a>
+<a href=".">login</a>
+<a href="scoreboard">scoreboard</a>
+</nav>
+</header>
+<% } %>
+<div id="maindiv">

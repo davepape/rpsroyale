@@ -1,0 +1,26 @@
+<%- include('header'); %>
+
+<h1>match result</h1>
+
+<p>
+You played "<%= match.mymove %>". <br>
+<%= match.opp %> played "<%= match.oppmove %>".
+</p>
+
+<% if (matchRes.result == 'W') { %>
+Congratulations, you win!
+<br>
+You won <%= matchRes.mypoints %> points.
+<% }
+   else if (matchRes.result == 'L') {
+%>
+Sorry, you lost!
+<br>
+You lost <%= -matchRes.mypoints %> points.
+<% }
+   else {
+%>
+It's a tie.
+<% } %>
+
+<%- include('footer'); %>

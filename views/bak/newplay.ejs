@@ -1,0 +1,15 @@
+<%- include('header'); %>
+
+<h1>new play</h1>
+
+<form action="makeplay" method="POST">
+Stake: <input type="text" name="stake" value="1">
+<br>
+<ul class="horizontallist">
+<li><input type="submit" name="rock" value="rock"></li>
+<li><input type="submit" name="paper" value="paper"></li>
+<li><input type="submit" name="scissors" value="scissors"></li>
+</ul>
+</form>
+
+<%- include('footer'); %>

@@ -1,0 +1,25 @@
+<%- include('header'); %>
+
+<h2>log in to an existing account</h2>
+<form action="login" method="POST">
+E-mail address: <input type="text" name="username">
+<br>
+Password: <input type="password" name="password">
+<br>
+<input type="submit" value="log in" id="submit">
+</form>
+
+<h2>... or create a new account</h2>
+<form action="newaccount" method="POST">
+E-mail address: <input type="text" name="username">
+<br>
+Password: <input type="text" name="password">
+<br>
+Screen name: <input type="text" name="screenname">
+<br>
+Your profile: <textarea name="profile"></textarea>
+<br>
+<input type="submit" value="create" id="submit">
+</form>
+
+<%- include('footer'); %>
