@@ -132,3 +132,4 @@ dist
 tmp
 package-lock.json
 .htaccess
+*.swp
