@@ -1,8 +1,3 @@
-/* This version of "rpsroyale" uses a series of Promises in the home() function,
- instead of using 'await'.  Doing this as a test of that approach, to try to
- see which seems more understandable.
- This approach is in theory better because it maintains more asynchrony.
-*/
 const path = require('path');
 const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
@@ -43,7 +38,18 @@ async function aboutPage(req, res) {
 
 async function attackPage(req, res) {
     let username = req.session.username;
-    res.render('attack', { username: username });
+    let db = await getDb();
+    let collection = db.collection("users");
+    let query = { _id: { $ne: ObjectID(req.session.rpsr_user_id) } };
+    collection.find(query).toArray(async function (err, result) {
+        let others = [];
+        for (let i=0; i < result.length; i++)
+            {
+            if (!(result[i].screenname in others))
+                others.push(result[i]);
+            }
+        res.render('attack', { username: username, otherplayers: others });
+        });
     }
 
 async function defendPage(req, res) {
@@ -144,6 +150,58 @@ function oppositeResult(r) {
     }
 
 
+async function makeDefense(req,res) {
+    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    let move = getMove(req.body);
+    let username = req.session.username;
+    console.log(`makeDefense ${username} ${move}`);
+    useActionPoint(req, async function (err, result) {
+            if (result.matchedCount > 0)
+                {
+                let db = await getDb();
+                let collection = db.collection("plays");
+                let play = { playername: username,
+                            playerid: req.session.rpsr_user_id,
+                            move: move,
+                            taunt: "Your mother was a hamster",
+                            timestamp: Date.now()
+                            };
+                collection.insertOne(play, function (err,result) {
+                    if (err) { console.log(err); return res.sendStatus(500); }
+                    res.redirect('home');
+                    });
+                }
+            else
+                {
+                res.render('nopoints', { username: username });
+                }
+            });
+    }
+
+async function makeAttack(req,res) {
+    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    let move = getMove(req.body);
+    let otherid = req.body.otherid;
+    let username = req.session.username;
+    console.log(`makeAttack ${username} ${move} ${otherid}`);
+    res.redirect('/');
+    }
+
+async function useActionPoint(req, callback) {
+    let db = await getDb();
+    let collection = db.collection("users");
+    let query = { _id: ObjectID(req.session.rpsr_user_id), actionpoints: { $gte: 1 } };
+    let operation = { $inc: { actionpoints: -1 } };
+    collection.updateOne(query, operation, callback);
+    }
+
+function getMove(body) {
+    if (body.rock) return 'rock';
+    if (body.paper) return 'paper';
+    if (body.scissors) return 'scissors';
+    return 'cheat';
+    }
+
 /*
 async function scoreboard(req, res) {
     let db = await getDb();
@@ -155,31 +213,6 @@ async function scoreboard(req, res) {
     }
 */
 
-
-function newplay(req, res) {
-    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
-    res.render('newplay', { user: req.session.rpsr_user_id });
-    }
-
-
-async function makeplay(req,res) {
-    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
-    let move = getMove(req.body);
-    let stake = await validateStake(req);
-    console.log(`makeplay ${req.session.rpsr_user.screenname} ${stake} ${move}`);
-    let play = { playername: req.session.rpsr_user.screenname,
-                 playerid: req.session.rpsr_user._id,
-                 stake: stake,
-                 move: move
-                };
-    updatePoints(req, stake);
-    let db = await getDb();
-    let collection = db.collection("plays");
-    collection.insertOne(play, function (err,result) {
-        if (err) { console.log(err); return res.sendStatus(500); }
-        res.redirect('home');
-        });
-    }
 
 
 async function match(req, res) {
@@ -254,13 +287,6 @@ function resolveMatch(mymove, othermove, mystake, otherstake)
         }
     }
 
-function getMove(body) {
-    if (body.rock) return 'rock';
-    if (body.paper) return 'paper';
-    if (body.scissors) return 'scissors';
-    return 'cheat';
-    }
-
 
 async function validateStake(req) {
     let stake = parseInt(req.body.stake);
@@ -279,17 +305,6 @@ async function validateStake(req) {
     return stake;
     }
 
-
-async function updatePoints(req,stake) {
-    let db = await getDb();
-    let collection = db.collection("users");
-    let query = { _id: ObjectID(req.session.rpsr_user_id) };
-    let operation = { $inc: { points: -stake } };
-    collection.updateOne(query, operation, function (err,res) {
-        if (err) { throw err; }
-        console.log(`reduced ${req.session.rpsr_user.screenname} points by ${stake}`);
-        });
-    }
 
 
 
@@ -371,8 +386,8 @@ router.get('/attack', attackPage);
 router.get('/defend', defendPage);
 router.get('/settings', settingsPage);
 router.get('/results', resultsPage);
-router.get('/newplay', newplay);
-router.post('/makeplay', makeplay);
+router.post('/makedefense', makeDefense);
+router.post('/makeattack', makeAttack);
 router.get('/match', match);
 router.post('/makematch', makematch);
 router.get('/logout', logout);
