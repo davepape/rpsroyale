@@ -60,7 +60,12 @@ async function attackPage(req, res) {
 async function defendPage(req, res) {
     if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
-    res.render('defend', { user: user });
+    let db = await getDb();
+    let query = { playerid: req.session.rpsr_user_id };
+    db.collection('plays').count(query, async function (err,result) {
+        if (err) { logMessage(err,req); return res.sendStatus(500); }
+        res.render('defend', { user: user, numDefenses: result });
+        });
     }
 
 async function scoreboardPage(req, res) {

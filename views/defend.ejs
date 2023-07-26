@@ -1,16 +1,17 @@
 <%- include('header'); %>
   <div class="row">
     <div class="md-8 text-center p-3">
-    This is the defend page.
+    Choose a defensive move
+    </div>
+    <div class="md-8 text-center p-3">
+    You currently have <%= numDefenses %> moves queued.
     </div>
     <div class="md-8 text-center p-3">
     Play:<br>
     <form method="post" action="makedefense">
-    <ul class="horizontallist">
-    <li><input type="submit" name="rock" value="rock"></li>
-    <li><input type="submit" name="paper" value="paper"></li>
-    <li><input type="submit" name="scissors" value="scissors"></li>
-    </ul>
+    <input type="submit" name="rock" value="rock">
+    <input type="submit" name="paper" value="paper">
+    <input type="submit" name="scissors" value="scissors">
     </form>
     </div>
   </div>
