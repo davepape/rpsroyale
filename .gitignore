@@ -133,3 +133,4 @@ tmp
 package-lock.json
 .htaccess
 *.swp
+favicon.*
