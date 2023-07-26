@@ -31,15 +31,17 @@ async function index(req, res) {
     }
 
 async function welcomePage(req, res) {
-    res.render('welcome', { username: ""} );
+    res.render('welcome', { user: null } );
     }
 
 async function aboutPage(req, res) {
-    res.render('about', { username: req.session.username });
+    let user = await playerByID(req.session.rpsr_user_id);
+    res.render('about', { user: user });
     }
 
 async function attackPage(req, res) {
-    let username = req.session.username;
+    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let collection = db.collection("users");
     let query = { _id: { $ne: ObjectID(req.session.rpsr_user_id) } };
@@ -50,36 +52,44 @@ async function attackPage(req, res) {
             if (!(result[i].screenname in others))
                 others.push(result[i]);
             }
-        res.render('attack', { username: req.session.username, otherplayers: others });
+        res.render('attack', { user: user, otherplayers: others });
         });
     }
 
 async function defendPage(req, res) {
-    res.render('defend', { username: req.session.username });
+    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    let user = await playerByID(req.session.rpsr_user_id);
+    res.render('defend', { user: user });
     }
 
 async function scoreboardPage(req, res) {
-    res.render('scoreboard', { username: req.session.username });
+    let user = await playerByID(req.session.rpsr_user_id);
+    res.render('scoreboard', { user: user });
     }
 
 async function settingsPage(req, res) {
-    res.render('settings', { username: req.session.username });
+    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    let user = await playerByID(req.session.rpsr_user_id);
+    res.render('settings', { user: user });
     }
 
 async function resultsPage(req, res) {
+    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let collection = db.collection("users");
     let query = { _id: ObjectID(req.session.rpsr_user_id) };
     let operation = { $set: { hasNewResults: false } };
     collection.updateOne(query, operation, function (err,result) {
         if (err) { throw err; }
-        res.render('results', { username: req.session.username });
+        res.render('results', { user: user });
         });
     }
 
 
 async function home(req, res) {
     if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let collection = db.collection("users");
     let query = { _id: ObjectID(req.session.rpsr_user_id) };
@@ -109,8 +119,9 @@ async function logMessage(message,req)
 
 async function makeDefense(req,res) {
     if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    let user = await playerByID(req.session.rpsr_user_id);
     let move = getMove(req.body);
-    let username = req.session.username;
+    let username = user.screenname;
     logMessage(`makeDefense ${username} ${move}`,req);
     useActionPoint(req, async function (err, result) {
             if (result.matchedCount > 0)
@@ -131,7 +142,7 @@ async function makeDefense(req,res) {
                 }
             else
                 {
-                res.render('nopoints', { username: req.session.username });
+                res.render('nopoints', { user: user });
                 }
             });
     }
@@ -139,17 +150,19 @@ async function makeDefense(req,res) {
 async function makeAttack(req,res)
     {
     if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    let user = await playerByID(req.session.rpsr_user_id);
     useActionPoint(req, async function (err, result) {
         if (result.matchedCount > 0)
             findDefense(req, res);
         else
-            res.render('nopoints', { username: req.session.username });
+            res.render('nopoints', { user: user });
         });
     }
 
 
 async function findDefense(req, res)
     {
+    let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let collection = db.collection("plays");
     let myID = req.session.rpsr_user_id;
@@ -169,7 +182,7 @@ async function findDefense(req, res)
                 db.collection("autoWins").insertOne(autoWinQuery);
                 }
             else
-                return res.render('matchfailed', { username: req.session.username });
+                return res.render('matchfailed', { user: user });
             }
         resolveAttack(req, res, othermove);
         }).catch(function (err) { logMessage(err,req); return res.sendStatus(500); });
@@ -177,11 +190,12 @@ async function findDefense(req, res)
 
 async function resolveAttack(req, res, othermove)
     {
+    let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let myID = req.session.rpsr_user_id;
     let otherID = req.body.otherid;
     let mymove = getMove(req.body);
-    let username = req.session.username;
+    let username = user.screenname;
     let othername = (await playerByID(otherID)).screenname;
     logMessage(`makeAttack ${username} ${mymove} ${otherID} (${othername})`,req);
     let matchRes = decideWinner(mymove, othermove);
@@ -199,9 +213,10 @@ async function resolveAttack(req, res, othermove)
     db.collection("results").insertOne(resultRecord, function (err,result) {
         if (err) { logMessage(err,req); }
         });
-    updatePlayerScore(req.session.rpsr_user_id, matchRes.mypoints);
-    updatePlayerScore(otherID, matchRes.otherpoints);
-    res.render('matchresult', { username: username, user: req.session.rpsr_user_id, mymove: mymove, oppmove: othermove, oppname: othername, matchRes: matchRes });
+    updatePlayerScore(req.session.rpsr_user_id, matchRes.mypoints, false);
+    updatePlayerScore(otherID, matchRes.otherpoints, true);
+    user = await playerByID(req.session.rpsr_user_id);
+    res.render('matchresult', { user: user, mymove: mymove, oppmove: othermove, oppname: othername, matchRes: matchRes });
     }
 
 
@@ -232,14 +247,23 @@ function decideWinner(mymove, othermove)
     }
 
 
-async function updatePlayerScore(playerid, points)
+function getMove(body)
     {
-    if (points == 0)
-        return;
+    if (body.rock) return 'rock';
+    if (body.paper) return 'paper';
+    if (body.scissors) return 'scissors';
+    return 'cheat';
+    }
+
+
+async function updatePlayerScore(playerid, points, newResultFlag)
+    {
     let db = await getDb();
     let collection = db.collection("users");
     let query = { _id: ObjectID(playerid) };
     let operation = { $inc: { score: points } };
+    if (newResultFlag)
+        operation = { $inc: { score: points }, $set: { hasNewResults: true } };
     collection.updateOne(query, operation, function (err,res) {
         if (err) { throw err; }
         logMessage(`changed ${playerid} score by ${points}`,null);
@@ -247,20 +271,13 @@ async function updatePlayerScore(playerid, points)
     }
 
 
-async function useActionPoint(req, callback) {
+async function useActionPoint(req, callback)
+    {
     let db = await getDb();
     let collection = db.collection("users");
     let query = { _id: ObjectID(req.session.rpsr_user_id), actionpoints: { $gte: 1 } };
     let operation = { $inc: { actionpoints: -1 } };
     collection.updateOne(query, operation, callback);
-    }
-
-
-function getMove(body) {
-    if (body.rock) return 'rock';
-    if (body.paper) return 'paper';
-    if (body.scissors) return 'scissors';
-    return 'cheat';
     }
 
 
@@ -274,9 +291,26 @@ async function playerByID(id)
     }
 
 
+function printableTime(t) {
+    let d = new Date(t);
+    return d.toLocaleDateString('en-us', { month: "short", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric"});
+    }
+
+
+function oppositeResult(r) {
+    if (r == 'W')
+        return 'L';
+    else if (r == 'L')
+        return 'W';
+    else
+        return r;
+    }
 
 
 
+
+
+/*
 async function findPlayerResults(playerid) {
     let db = await getDb();
     return new Promise(function (resolve, reject) {
@@ -318,22 +352,7 @@ async function findPlayerPlays(playerid) {
             });
         });
     }
-
-
-function printableTime(t) {
-    let d = new Date(t);
-    return d.toLocaleDateString('en-us', { month: "short", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric"});
-    }
-
-
-function oppositeResult(r) {
-    if (r == 'W')
-        return 'L';
-    else if (r == 'L')
-        return 'W';
-    else
-        return r;
-    }
+*/
 
 /*
 async function scoreboard(req, res) {
@@ -358,7 +377,7 @@ async function login(req, res) {
             {
             let ok = await bcrypt.compare(req.body.password, result.password);
             if (ok) {
-                req.session.rpsr_user = result;
+                req.session.rpsr_user_id = result._id;
                 res.redirect(`home`);
                 }
             else {
@@ -372,9 +391,10 @@ async function login(req, res) {
     }
 */
 
-async function newAccount(req, res) {
+async function newAccount(req, res)
+    {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) { return res.render('error', { errors: errors.array() }); }
+    if (!errors.isEmpty()) { return res.render('error', { user: null, errors: errors.array() }); }
     let db = await getDb();
     let collection = db.collection("users");
     let query = { screenname: new RegExp(`^${req.body.yourname}$`,'i') };
@@ -396,19 +416,22 @@ async function newAccount(req, res) {
     }
 
 
-function loginError(req, res) {
+function loginError(req, res)
+    {
     logMessage('loginError', req);
-    res.render('loginerror', { username: "" });
+    res.render('loginerror', { user: null });
     }
 
 
-function newAccountError(req, res) {
+function newAccountError(req, res)
+    {
     logMessage('newAccountError', req);
-    res.render('newaccounterror', { username: "" });
+    res.render('newaccounterror', { user: null });
     }
 
 
-function logout(req, res) {
+function logout(req, res)
+    {
     logMessage('logout', req);
     req.session.destroy(function (err) {
         if (err) { logMessage(err,req); return res.sendStatus(500); }
@@ -416,6 +439,23 @@ function logout(req, res) {
         });
     }
 
+
+async function resetGame(req, res)
+    {
+    if (req.params.password != process.env.RPSR_ADMIN_PASSWORD)
+        {
+        logMessage('resetGame - wrong password', req);
+        return res.redirect('/');
+        }
+    logMessage('resetting game', req);
+    logMessage('===========================================================', req);
+    let db = await getDb();
+    db.collection('autoWins').deleteMany({});
+    db.collection('plays').deleteMany({});
+    db.collection('results').deleteMany({});
+    db.collection('users').updateMany({}, { $set: { actionpoints: STARTING_POINTS, score: 0, hasNewResults: false } });
+    res.redirect('/home');
+    }
 
 
 const express = require('express');
@@ -436,5 +476,6 @@ router.get('/logout', logout);
 router.get('/loginerror', loginError);
 router.post('/newaccount', newAccount);
 router.get('/newaccounterror', newAccountError);
+router.get('/resetgame/:password', resetGame);
 
 module.exports = router;

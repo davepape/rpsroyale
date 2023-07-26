@@ -15,10 +15,15 @@
     <a href="/" class="btn btn-primary">RPSR</a>
     </div>
     <div class="col">
-    Score:
+<% if (user) { %>
+    Score: <%= user.score %>
+    Action points: <%= user.actionpoints %>
+<% } %>
     </div>
     <div class="col">
-    <%= username %>
+<% if (user) { %>
+    <%= user.screenname %>
+<% } %>
     </div>
   </div>
   <div class="row">
