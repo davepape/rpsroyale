@@ -1,0 +1,26 @@
+<%- include('header'); %>
+
+<h1>match result</h1>
+
+<p>
+You played "<%= mymove %>". <br>
+<% if (oppmove == 'lose') { %>
+<%= oppname %> had no defense prepared - you win by default.
+<% } else { %>
+<%= oppname %> played "<%= oppmove %>".
+<% } %>
+</p>
+
+<% if (matchRes.result == 'W') { %>
+Congratulations, you win!
+<% }
+   else if (matchRes.result == 'L') {
+%>
+Sorry, you lost!
+<% }
+   else {
+%>
+It's a tie.
+<% } %>
+
+<%- include('footer'); %>

@@ -7,7 +7,7 @@ app.set('view engine', 'ejs');
 /* Enable session data for all connections to this site */
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
-const sess_uri = process.env.ATLAS_SESSION_URI;
+const sess_uri = process.env.ATLAS_RPSR_SESSION_URI;
 
 app.use(session({ secret: 'fnord',
                   store: MongoStore.create({ mongoUrl: sess_uri }),
