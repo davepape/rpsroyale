@@ -83,12 +83,38 @@ async function resultsPage(req, res) {
     if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
-    let collection = db.collection("users");
     let query = { _id: ObjectID(req.session.rpsr_user_id) };
     let operation = { $set: { hasNewResults: false } };
-    collection.updateOne(query, operation, function (err,result) {
+    db.collection("users").updateOne(query, operation);
+    user.hasNewResults = false;
+    query = { $or: [{'player1.id': req.session.rpsr_user_id}, {'player2.id': req.session.rpsr_user_id}] };
+    db.collection("results").find(query).sort({time: -1}).toArray(async function (err,result) {
         if (err) { throw err; }
-        res.render('results', { user: user });
+        let mergedResults = [];
+        for (let i=0; i < result.length; i++)
+            {
+            let r = result[i];
+            if (r.player1.id == req.session.rpsr_user_id)
+                {
+                let highlight = '';
+                if (!r.player1.viewed) highlight = 'table-active';
+                let winlose = 'beat';
+                if (r.result == 'L') winlose = 'lost to';
+                else if (r.result == 'T') winlose = 'tied';
+                mergedResults.push({highlight: highlight, winlose: winlose, other: r.player2.name, time: printableTime(r.time)});
+                }
+            else
+                {
+                let highlight = '';
+                if (!r.player2.viewed) highlight = 'table-active';
+                let winlose = 'beat';
+                if (r.result == 'W') winlose = 'lost to';
+                else if (r.result == 'T') winlose = 'tied';
+                mergedResults.push({highlight: highlight, winlose: winlose, other: r.player1.name, time: printableTime(r.time)});
+                }
+            }
+        db.collection("results").updateMany({'player2.id': req.session.rpsr_user_id},{$set: { 'player2.viewed': true }});
+        res.render('results', { user: user, results: mergedResults });
         });
     }
 
@@ -299,7 +325,7 @@ async function playerByID(id)
 
 function printableTime(t) {
     let d = new Date(t);
-    return d.toLocaleDateString('en-us', { month: "short", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric"});
+    return d.toLocaleDateString('en-us', { month: "short", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric", timeZone: 'America/New_York'});
     }
 
 
@@ -317,34 +343,6 @@ function oppositeResult(r) {
 
 
 /*
-async function findPlayerResults(playerid) {
-    let db = await getDb();
-    return new Promise(function (resolve, reject) {
-        let collection = db.collection("results");
-        let query = { $or: [ { 'player1.id': playerid },
-                            { 'player2.id': playerid }]};
-        collection.find(query).toArray(function(err, res) {
-            if (err)
-                reject(err);
-            let mergedResults = [];
-            for (let i=0; i < res.length; i++) {
-                let obj = { time: printableTime(res[i].time) };
-                if (res[i].player1.id == playerid) {
-                    obj.otherPlayer = res[i].player2.name;
-                    obj.points = res[i].player1.points;
-                    obj.result = res[i].result;
-                    }
-                else {
-                    obj.otherPlayer = res[i].player1.name;
-                    obj.points = res[i].player2.points;
-                    obj.result = oppositeResult(res[i].result);
-                    }
-                mergedResults.push(obj);
-                }
-            resolve(mergedResults);
-            });
-        });
-    }
 
 async function findPlayerPlays(playerid) {
     let db = await getDb();

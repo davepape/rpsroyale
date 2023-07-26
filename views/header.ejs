@@ -17,7 +17,11 @@
     <div class="col">
 <% if (user) { %>
     Score: <%= user.score %>
-    Action points: <%= user.actionpoints %>
+<% } %>
+    </div>
+    <div class="col">
+<% if (user) { %>
+    Actions: <%= user.actionpoints %>
 <% } %>
     </div>
     <div class="col">
@@ -32,6 +36,13 @@
     </div>
     <div class="col d-grid gap-1">
     <a href="/scoreboard" class="btn btn-info">Scoreboard</a>
+    </div>
+    <div class="col d-grid gap-1">
+<% if ((user) && (user.hasNewResults)) { %>
+    <a href="/results" class="btn btn-danger">Results</a>
+<% } else { %>
+    <a href="/results" class="btn btn-info">Results</a>
+<% } %>
     </div>
     <div class="col d-grid gap-1">
     <a href="/settings" class="btn btn-info">Settings</a>

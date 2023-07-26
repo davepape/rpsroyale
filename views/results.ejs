@@ -1,7 +1,17 @@
 <%- include('header'); %>
   <div class="row">
     <div class="md-8 text-center p-3">
-    This is the results page.
+    RESULTS OF MATCHES
+<table class="table">
+<% results.forEach(function(r) { %>
+    <tr class="<%= r.highlight %>">
+    <td>You</td>
+    <td><%= r.winlose %></td>
+    <td><%= r.other %></td>
+    <td><%= r.time %></td>
+    </tr>
+<% }) %>
+</table>
     </div>
   </div>
 <%- include('footer'); %>
