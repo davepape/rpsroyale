@@ -125,6 +125,7 @@ async function makeDefense(req,res) {
                             };
                 collection.insertOne(play, function (err,result) {
                     if (err) { logMessage(err,req); return res.sendStatus(500); }
+                    db.collection("autoWins").deleteMany({player2: req.session.rpsr_user_id});
                     res.redirect('home');
                     });
                 }
