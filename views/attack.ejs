@@ -2,9 +2,11 @@
   <div class="row">
     <div class="md-8 text-center p-3">
     This is the attack page.
-<ul>
+<table class="table">
 <% otherplayers.forEach(function(p) { %>
-    <li><%= p.screenname %><form method="POST" action="makeattack"><input type="hidden" name="otherid" value="<%= p._id %>"><input type="submit" name="rock" value="rock"><input type="submit" name="paper" value="paper"><input type="submit" name="scissors" value="scissors"></form></li>
+    <tr><th><%= p.screenname %></th>
+    <td><form method="POST" action="makeattack"><input type="hidden" name="otherid" value="<%= p._id %>"> <input type="submit" name="rock" value="rock"> <input type="submit" name="paper" value="paper"> <input type="submit" name="scissors" value="scissors"></form></td>
+    </tr>
 <% }) %>
 </ul>
     </div>
