@@ -47,5 +47,15 @@
     <div class="col d-grid gap-1">
     <a href="/settings" class="btn btn-info">Settings</a>
     </div>
+<% if (user) { %>
+  <div class="row p-3">
+    <div class="col d-grid gap-1">
+      <a href="/attack" class="btn btn-primary">Attack</a>
+    </div>
+    <div class="col d-grid gap-1">
+      <a href="/defend" class="btn btn-primary">Defend</a>
+    </div>
+  </div>
+<% } %>
   </div>
 
