@@ -46,6 +46,7 @@ async function attackPage(req, res) {
     let collection = db.collection("users");
     let query = { _id: { $ne: ObjectID(req.session.rpsr_user_id) } };
     collection.find(query).toArray(async function (err, result) {
+        if (err) { logMessage(err,req); return res.sendStatus(500); }
         let others = [];
         for (let i=0; i < result.length; i++)
             {
@@ -64,7 +65,12 @@ async function defendPage(req, res) {
 
 async function scoreboardPage(req, res) {
     let user = await playerByID(req.session.rpsr_user_id);
-    res.render('scoreboard', { user: user });
+    let db = await getDb();
+    let collection = db.collection("users");
+    collection.find({}).sort({score:-1, screenname: 1}).toArray(async function (err, result) {
+        if (err) { logMessage(err,req); return res.sendStatus(500); }
+        res.render('scoreboard', { user: user, scores: result });
+        });
     }
 
 async function settingsPage(req, res) {

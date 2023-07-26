@@ -1,7 +1,18 @@
 <%- include('header'); %>
   <div class="row">
     <div class="md-8 text-center p-3">
-    This is the scoreboard page.
+    SCORES
+<table class="table">
+<% scores.forEach(function(p) {
+      if (p.screenname == user.screenname) p.class="table-active";
+      else p.class="";
+%>
+    <tr class="<%= p.class %>">
+    <td><%= p.screenname %></td>
+    <td><%= p.score %></td>
+    </tr>
+<% }) %>
+</table>
     </div>
   </div>
 <%- include('footer'); %>
