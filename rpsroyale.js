@@ -467,6 +467,39 @@ async function resetGame(req, res)
     }
 
 
+async function log(req, res)
+    {
+    if (req.params.password != process.env.RPSR_ADMIN_PASSWORD)
+        {
+        logMessage('log - wrong password', req);
+        return res.redirect('/');
+        }
+    let db = await getDb();
+    db.collection('log').find({}).sort({timestamp:-1}).toArray(async function (err,result) {
+        if (err) { logMessage(err,req); return res.sendStatus(500); }
+        for (let i=0; i < result.length; i++)
+            {
+            result[i].time = printableTime(result[i].timestamp);
+            }
+        res.render('log', { log: result });
+        });
+    }
+
+async function monitor(req, res)
+    {
+    if (req.params.password != process.env.RPSR_ADMIN_PASSWORD)
+        {
+        logMessage('monitor - wrong password', req);
+        return res.redirect('/');
+        }
+    let db = await getDb();
+    db.collection('users').find({}).sort({screenname:1}).toArray(async function (err,result) {
+        if (err) { logMessage(err,req); return res.sendStatus(500); }
+        res.render('monitor', { users: result });
+        });
+    }
+
+
 const express = require('express');
 let router = express.Router();
 
@@ -486,5 +519,7 @@ router.get('/loginerror', loginError);
 router.post('/newaccount', newAccount);
 router.get('/newaccounterror', newAccountError);
 router.get('/resetgame/:password', resetGame);
+router.get('/log/:password', log);
+router.get('/monitor/:password', monitor);
 
 module.exports = router;
