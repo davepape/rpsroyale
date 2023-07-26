@@ -4,10 +4,8 @@
     SCORES
 <table class="table">
 <% scores.forEach(function(p) {
-      if (p.screenname == user.screenname) p.class="table-active";
-      else p.class="";
 %>
-    <tr class="<%= p.class %>">
+    <tr class="<%= p.css %>">
     <td><%= p.screenname %></td>
     <td><%= p.score %></td>
     </tr>
