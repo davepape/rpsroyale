@@ -23,9 +23,15 @@ async function getDb() {
 
 
 
+async function rootPage(req, res) {
+    if (req.session.rpsr_user_id) { return res.redirect('/game'); }
+    return res.sendStatus(404);
+    }
+
+
 async function index(req, res) {
     if (req.session.rpsr_user_id)
-        home(req, res);
+        game(req, res);
     else
         welcomePage(req, res);
     }
@@ -40,7 +46,7 @@ async function aboutPage(req, res) {
     }
 
 async function attackPage(req, res) {
-    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let collection = db.collection("users");
@@ -58,7 +64,7 @@ async function attackPage(req, res) {
     }
 
 async function defendPage(req, res) {
-    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let query = { playerid: req.session.rpsr_user_id };
@@ -86,13 +92,13 @@ async function scoreboardPage(req, res) {
     }
 
 async function settingsPage(req, res) {
-    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
     res.render('settings', { user: user });
     }
 
 async function resultsPage(req, res) {
-    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let query = { _id: ObjectID(req.session.rpsr_user_id) };
@@ -131,15 +137,15 @@ async function resultsPage(req, res) {
     }
 
 
-async function home(req, res) {
-    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+async function game(req, res) {
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let collection = db.collection("users");
     let query = { _id: ObjectID(req.session.rpsr_user_id) };
     collection.findOne(query, async function (err, result) {
         if (err) { logMessage(err,req); return res.sendStatus(500); }
-        res.render('home', { user: result, username: result.screenname });
+        res.render('game', { user: result, username: result.screenname });
         });
     }
 
@@ -162,7 +168,7 @@ async function logMessage(message,req)
 
 
 async function makeDefense(req,res) {
-    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
     let move = getMove(req.body);
     let username = user.screenname;
@@ -181,7 +187,7 @@ async function makeDefense(req,res) {
                 collection.insertOne(play, function (err,result) {
                     if (err) { logMessage(err,req); return res.sendStatus(500); }
                     db.collection("autoWins").deleteMany({player2: req.session.rpsr_user_id});
-                    res.redirect('home');
+                    res.redirect('/game');
                     });
                 }
             else
@@ -193,7 +199,7 @@ async function makeDefense(req,res) {
 
 async function makeAttack(req,res)
     {
-    if (!req.session.rpsr_user_id) { return res.redirect('welcome'); }
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
     useActionPoint(req, async function (err, result) {
         if (result.matchedCount > 0)
@@ -325,6 +331,16 @@ async function useActionPoint(req, callback)
     }
 
 
+async function addActionPoints(userid, points)
+    {
+    let db = await getDb();
+    let collection = db.collection("users");
+    let query = { _id: ObjectID(userid) };
+    let operation = { $inc: { actionpoints: points } };
+    collection.updateOne(query, operation);
+    }
+
+
 async function playerByID(id)
     {
     let db = await getDb();
@@ -351,6 +367,42 @@ function oppositeResult(r) {
     }
 
 
+async function scanQR(req,res)
+    {
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
+    let siteNum = req.params.num;
+    let user = await playerByID(req.session.rpsr_user_id);
+    let db = await getDb();
+    let collection = db.collection('qrscans');
+    let query = { playerid: req.session.rpsr_user_id, siteNum: siteNum };
+    collection.findOne(query, async function (err,result) {
+        if (err) { logMessage(err,req); return res.sendStatus(500); }
+        let okToAdd = !result;
+        if (result)
+            {
+            let lastVisit = new Date(result.timestamp);
+            lastVisit.setHours(lastVisit.getHours() + 1);
+            let now = new Date();
+            if (now >= lastVisit)
+                okToAdd = true;
+            }
+        if (okToAdd)
+            {
+            let points = 5;
+            addActionPoints(req.session.rpsr_user_id, points);
+            user.actionpoints += points;
+            let newval = { $set: { timestamp: Date.now() }};
+            collection.updateOne(query, newval, { upsert: true });
+            logMessage(`scanned target ${siteNum}`, req);
+            res.render('scannedqr', { user: user, points: points });
+            }
+        else
+            {
+            logMessage(`tried to scan target ${siteNum} too soon`, req);
+            res.render('scanqrfailed', { user: user });
+            }
+        });
+    }
 
 
 
@@ -367,7 +419,7 @@ async function login(req, res) {
             let ok = await bcrypt.compare(req.body.password, result.password);
             if (ok) {
                 req.session.rpsr_user_id = result._id;
-                res.redirect(`home`);
+                res.redirect(`/game`);
                 }
             else {
                 res.redirect(`loginerror`);
@@ -390,12 +442,12 @@ async function newAccount(req, res)
     logMessage(`trying to create account ${req.body.yourname}`, req);
     let numExisting = await collection.count(query);
     if (numExisting == 0) {
-        let obj = { screenname: req.body.yourname, email: "", password: "x", actionpoints: STARTING_POINTS, score: 0, hasNewResults: true };
+        let obj = { screenname: req.body.yourname, email: "", password: "x", actionpoints: STARTING_POINTS, score: 0, hasNewResults: false };
         collection.insertOne(obj, function (err,result) {
             if (err) { logMessage(err,req); return res.sendStatus(500); }
             req.session.rpsr_user_id = result.insertedId;
             req.session.username = obj.screenname;
-            res.redirect(`home`);
+            res.redirect(`/game`);
             });
         logMessage(`new account ${req.body.yourname}`, req);
         }
@@ -413,12 +465,12 @@ async function randomName(req, res)
     let db = await getDb();
     let collection = db.collection("users");
     logMessage(`trying to create random-named account ${name}`, req);
-    let obj = { screenname: name, email: "", password: "x", actionpoints: STARTING_POINTS, score: 0, hasNewResults: true };
+    let obj = { screenname: name, email: "", password: "x", actionpoints: STARTING_POINTS, score: 0, hasNewResults: false };
     collection.insertOne(obj, function (err,result) {
         if (err) { logMessage(err,req); return res.sendStatus(500); }
         req.session.rpsr_user_id = result.insertedId;
         req.session.username = obj.screenname;
-        res.redirect(`home`);
+        res.redirect(`/game`);
         });
     logMessage(`new account ${name}`, req);
     }
@@ -484,7 +536,7 @@ async function resetGame(req, res)
     db.collection('plays').deleteMany({});
     db.collection('results').deleteMany({});
     db.collection('users').updateMany({}, { $set: { actionpoints: STARTING_POINTS, score: 0, hasNewResults: false } });
-    res.redirect('/home');
+    res.redirect('/game');
     }
 
 
@@ -524,8 +576,9 @@ async function monitor(req, res)
 const express = require('express');
 let router = express.Router();
 
-router.get('/', index);
-router.get('/home', home);
+router.get('/', rootPage);
+router.get('/rpsr', index);
+router.get('/game', game);
 router.get('/welcome', welcomePage);
 router.get('/about', aboutPage);
 router.get('/scoreboard', scoreboardPage);
@@ -540,6 +593,7 @@ router.get('/loginerror', loginError);
 router.post('/newaccount', newAccount);
 router.get('/newaccounterror', newAccountError);
 router.get('/randomname', randomName);
+router.get('/scanqr/:num', scanQR);
 router.get('/resetgame/:password', resetGame);
 router.get('/log/:password', log);
 router.get('/monitor/:password', monitor);
