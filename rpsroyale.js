@@ -59,7 +59,7 @@ async function attackPage(req, res) {
             if (!(result[i].screenname in others))
                 others.push(result[i]);
             }
-        res.render('attack', { user: user, otherplayers: others });
+        res.render('attack', { user: user, otherplayers: others, insults: insultLists(10) });
         });
     }
 
@@ -70,7 +70,7 @@ async function defendPage(req, res) {
     let query = { playerid: req.session.rpsr_user_id };
     db.collection('plays').count(query, async function (err,result) {
         if (err) { logMessage(err,req); return res.sendStatus(500); }
-        res.render('defend', { user: user, numDefenses: result });
+        res.render('defend', { user: user, numDefenses: result, insults: insultLists(10) });
         });
     }
 
@@ -112,24 +112,27 @@ async function resultsPage(req, res) {
         for (let i=0; i < result.length; i++)
             {
             let r = result[i];
+            let highlight = '';
+            let winlose = 'beat';
+            let otherName = '';
             if (r.player1.id == req.session.rpsr_user_id)
                 {
-                let highlight = '';
                 if (!r.player1.viewed) highlight = 'table-active';
-                let winlose = 'beat';
                 if (r.result == 'L') winlose = 'lost to';
                 else if (r.result == 'T') winlose = 'tied';
-                mergedResults.push({highlight: highlight, winlose: winlose, other: r.player2.name, time: printableTime(r.time)});
+                otherName = r.player2.name;
                 }
             else
                 {
-                let highlight = '';
                 if (!r.player2.viewed) highlight = 'table-active';
-                let winlose = 'beat';
                 if (r.result == 'W') winlose = 'lost to';
                 else if (r.result == 'T') winlose = 'tied';
-                mergedResults.push({highlight: highlight, winlose: winlose, other: r.player1.name, time: printableTime(r.time)});
+                otherName = r.player1.name;
                 }
+            let taunt = '';
+            if (winlose == 'lost to')
+                taunt = r.taunt;
+            mergedResults.push({highlight: highlight, winlose: winlose, other: otherName, time: printableTime(r.time), taunt: taunt});
             }
         db.collection("results").updateMany({'player2.id': req.session.rpsr_user_id},{$set: { 'player2.viewed': true }});
         res.render('results', { user: user, results: mergedResults });
@@ -172,6 +175,7 @@ async function makeDefense(req,res) {
     let user = await playerByID(req.session.rpsr_user_id);
     let move = getMove(req.body);
     let username = user.screenname;
+    let taunt = `${tauntPrefix()} you ${req.body.taunt1} ${req.body.taunt2} ${req.body.taunt3}!`;
     logMessage(`makeDefense ${username} ${move}`,req);
     useActionPoint(req, async function (err, result) {
             if (result.matchedCount > 0)
@@ -181,7 +185,7 @@ async function makeDefense(req,res) {
                 let play = { playername: username,
                             playerid: req.session.rpsr_user_id,
                             move: move,
-                            taunt: "Your mother was a hamster",
+                            taunt: taunt,
                             timestamp: Date.now()
                             };
                 collection.insertOne(play, function (err,result) {
@@ -200,12 +204,14 @@ async function makeDefense(req,res) {
 async function makeAttack(req,res)
     {
     if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
-    let user = await playerByID(req.session.rpsr_user_id);
     useActionPoint(req, async function (err, result) {
         if (result.matchedCount > 0)
             findDefense(req, res);
         else
+            {
+            let user = await playerByID(req.session.rpsr_user_id);
             res.render('nopoints', { user: user });
+            }
         });
     }
 
@@ -216,12 +222,16 @@ async function findDefense(req, res)
     let db = await getDb();
     let collection = db.collection("plays");
     let myID = req.session.rpsr_user_id;
-    let otherID = req.body.otherid;
+    let otherID = req.body.opponent;
+    let othertaunt = '';
     let query = { playerid: otherID };
     collection.findOneAndDelete(query).then(async function (result) {
         let play = result.value;
         if (play)
+            {
             othermove = play.move;
+            othertaunt = play.taunt;
+            }
         else
             {
             let autoWinQuery = { player1: myID, player2: otherID };
@@ -234,21 +244,21 @@ async function findDefense(req, res)
             else
                 return res.render('matchfailed', { user: user });
             }
-        resolveAttack(req, res, othermove);
+        resolveAttack(req, res, otherID, othermove, othertaunt);
         }).catch(function (err) { logMessage(err,req); return res.sendStatus(500); });
     }
 
-async function resolveAttack(req, res, othermove)
+async function resolveAttack(req, res, otherID, othermove, othertaunt)
     {
     let user = await playerByID(req.session.rpsr_user_id);
     let db = await getDb();
     let myID = req.session.rpsr_user_id;
-    let otherID = req.body.otherid;
-    let mymove = getMove(req.body);
+    let mymove = validateMove(req.body.attack);
     let username = user.screenname;
     let othername = (await playerByID(otherID)).screenname;
+    let mytaunt = `${tauntPrefix()} you ${req.body.taunt1} ${req.body.taunt2} ${req.body.taunt3}!`;
     logMessage(`makeAttack ${username} ${mymove} ${otherID} (${othername})`,req);
-    let matchRes = decideWinner(mymove, othermove);
+    let matchRes = decideWinner(mymove, othermove, mytaunt, othertaunt);
     let resultRecord = { player1: { id: req.session.rpsr_user_id,
                                     name: username,
                                     points: matchRes.mypoints,
@@ -258,7 +268,8 @@ async function resolveAttack(req, res, othermove)
                                     points: matchRes.otherpoints,
                                     viewed: false },
                         time: Date.now(),
-                        result: matchRes.result
+                        result: matchRes.result,
+                        taunt: matchRes.taunt
                         };
     db.collection("results").insertOne(resultRecord, function (err,result) {
         if (err) { logMessage(err,req); }
@@ -270,29 +281,29 @@ async function resolveAttack(req, res, othermove)
     }
 
 
-function decideWinner(mymove, othermove)
+function decideWinner(mymove, othermove, mytaunt, othertaunt)
     {
     if (othermove == 'lose')
         {
-        return { result: 'W', mypoints: 1, otherpoints: 0 };
+        return { result: 'W', mypoints: 1, otherpoints: 0, taunt: mytaunt };
         }
     else if (othermove == 'win')
         {
-        return { result: 'L', mypoints: -1, otherpoints: 1 };
+        return { result: 'L', mypoints: -1, otherpoints: 1, taunt: othertaunt };
         }
     else if (mymove == othermove)
         {
-        return { result: 'T', mypoints: 0, otherpoints: 0 };
+        return { result: 'T', mypoints: 0, otherpoints: 0, taunt: '' };
         }
     else if (((mymove == 'rock') && (othermove == 'scissors')) ||
              ((mymove == 'paper') && (othermove == 'rock')) ||
              ((mymove == 'scissors') && (othermove == 'paper')))
         {
-        return { result: 'W', mypoints: 1, otherpoints: 0 };
+        return { result: 'W', mypoints: 1, otherpoints: 0, taunt: mytaunt };
         }
     else
         {
-        return { result: 'L', mypoints: -1, otherpoints: 1 };
+        return { result: 'L', mypoints: -1, otherpoints: 1, taunt: othertaunt };
         }
     }
 
@@ -302,6 +313,14 @@ function getMove(body)
     if (body.rock) return 'rock';
     if (body.paper) return 'paper';
     if (body.scissors) return 'scissors';
+    return 'cheat';
+    }
+
+
+function validateMove(move)
+    {
+    if ((move == 'rock') || (move == 'paper') || (move == 'scissors'))
+        return move;
     return 'cheat';
     }
 
@@ -405,6 +424,37 @@ async function scanQR(req,res)
     }
 
 
+
+let insult1 = ['artless', 'bawdy', 'beslubbering', 'bootless', 'churlish', 'cockered', 'clouted', 'craven', 'currish', 'dankish', 'dissembling', 'droning', 'errant', 'fawning', 'fobbing', 'froward', 'frothy', 'gleeking', 'goatish', 'gorbellied', 'impertinent', 'infectious', 'jarring', 'loggerheaded', 'lumpish', 'mammering', 'mangled', 'mewling', 'paunchy', 'pribbling', 'puking', 'puny', 'qualling', 'rank', 'reeky', 'roguish', 'ruttish', 'saucy', 'spleeny', 'spongy', 'surly', 'tottering', 'unmuzzled', 'vain', 'venomed', 'villainous', 'warped', 'wayward', 'weedy', 'yeasty'];
+let insult2 = ['base-court', 'bat-fowling', 'beef-witted', 'beetle-headed', 'boil-brained', 'clapper-clawed', 'clay-brained', 'common-kissing', 'crook-pated', 'dismal-dreaming', 'dizzy-eyed', 'doghearted', 'dread-bolted', 'earth-vexing', 'elf-skinned', 'fat-kidneyed', 'fen-sucked', 'flap-mouthed', 'fly-bitten', 'folly-fallen', 'fool-born', 'full-gorged', 'guts-griping', 'half-faced', 'hasty-witted', 'hedge-born', 'hell-hated', 'idle-headed', 'ill-breeding', 'ill-nurtured', 'knotty-pated', 'milk-livered', 'motley-minded', 'onion-eyed', 'plume-plucked', 'pottle-deep', 'pox-marked', 'reeling-ripe', 'rough-hewn', 'rude-growing', 'rump-fed', 'shard-borne', 'sheep-biting', 'spur-galled', 'swag-bellied', 'tardy-gaited', 'tickle-brained', 'toad-spotted', 'unchin-snouted', 'weather-bitten'];
+let insult3 = ['apple-john', 'baggage', 'barnacle', 'bladder', 'boar-pig', 'bugbear', 'bum-bailey', 'canker-blossom', 'clack-dish', 'clotpole', 'coxcomb', 'codpiece', 'death-token', 'dewberry', 'flap-dragon', 'flax-wench', 'flirt-gill', 'foot-licker', 'fustilarian', 'giglet', 'gudgeon', 'haggard', 'harpy', 'hedge-pig', 'horn-beast', 'hugger-mugger', 'joithead', 'lewdster', 'lout', 'maggot-pie', 'malt-worm', 'mammet', 'measle', 'minnow', 'miscreant', 'moldwarp', 'mumble-news', 'nut-hook', 'pigeon-egg', 'pignut', 'puttock', 'pumpion', 'ratsbane', 'scut', 'skainsmate', 'strumpet', 'varlot', 'vassal', 'whey-face', 'wagtail'];
+
+function shuffle(list,numSwaps)
+    {
+    for (let i=0; i < numSwaps; i++)
+        {
+        let a = Math.floor(Math.random()*Math.min(list.length,numSwaps));
+        let b = Math.floor(Math.random()*list.length);
+        let tmp = list[a];
+        list[a] = list[b];
+        list[b] = tmp;
+        }
+    }
+
+function insultLists(count)
+    {
+    shuffle(insult1, 10);
+    shuffle(insult2, 10);
+    shuffle(insult3, 10);
+    return [ insult1.slice(0,count), insult2.slice(0,count), insult3.slice(0,count) ];
+    }
+
+let tauntPrefixes = [ 'I won,', 'You lost,', 'I beat you,', 'Take that,', 'Ha!', '"Good game",' ];
+
+function tauntPrefix()
+    {
+    return choose(tauntPrefixes);
+    }
 
 
 /*

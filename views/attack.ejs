@@ -1,14 +1,46 @@
 <%- include('header'); %>
   <div class="row">
     <div class="md-8 text-center p-3">
-    You may try to attack any of the following players:
+    <form method="POST" action="makeattack">
+Choose your attack:
+<div class="btn-group" role="group" aria-label="Attack choice">
+  <input type="radio" class="btn-check" name="attack" id="rock" value="rock" autocomplete="off" checked>
+  <label class="btn btn-outline-primary" for="rock">Rock</label>
+
+  <input type="radio" class="btn-check" name="attack" id="paper" value="paper" autocomplete="off">
+  <label class="btn btn-outline-primary" for="paper">Paper</label>
+
+  <input type="radio" class="btn-check" name="attack" id="scissors" value="scissors" autocomplete="off">
+  <label class="btn btn-outline-primary" for="scissors">Scissors</label>
+</div>
+<br><br>
+    Choose a victory taunt: "You
+    <select name="taunt1" id="taunt1">
+<% insults[0].forEach(function(i) { %>
+      <option value="<%= i %>"><%= i %></option>
+<% }) %>
+    </select>
+    <select name="taunt2" id="taunt2">
+<% insults[1].forEach(function(i) { %>
+      <option value="<%= i %>"><%= i %></option>
+<% }) %>
+    </select>
+    <select name="taunt3" id="taunt3">
+<% insults[2].forEach(function(i) { %>
+      <option value="<%= i %>"><%= i %></option>
+<% }) %>
+    </select>"
+    <br>
+    (Taunt will be sent to your opponent if you win)
+<br><br>
+    Which player will you attack?
 <table class="table">
 <% otherplayers.forEach(function(p) { %>
-    <tr><th><%= p.screenname %></th>
-    <td><form method="POST" action="makeattack"><input type="hidden" name="otherid" value="<%= p._id %>"> <input type="submit" name="rock" value="rock"> <input type="submit" name="paper" value="paper"> <input type="submit" name="scissors" value="scissors"></form></td>
+    <tr><td><button name="opponent" value="<%= p._id %>" type="submit"><%= p.screenname %></button>
     </tr>
 <% }) %>
-</ul>
+</table>
+</form>
     </div>
   </div>
 <%- include('footer'); %>

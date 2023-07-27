@@ -12,6 +12,25 @@
     <input type="submit" name="rock" value="rock">
     <input type="submit" name="paper" value="paper">
     <input type="submit" name="scissors" value="scissors">
+    <br><br>
+    Choose a victory taunt: "You 
+    <select name="taunt1" id="taunt1">
+<% insults[0].forEach(function(i) { %>
+      <option value="<%= i %>"><%= i %></option>
+<% }) %>
+    </select>
+    <select name="taunt2" id="taunt2">
+<% insults[1].forEach(function(i) { %>
+      <option value="<%= i %>"><%= i %></option>
+<% }) %>
+    </select>
+    <select name="taunt3" id="taunt3">
+<% insults[2].forEach(function(i) { %>
+      <option value="<%= i %>"><%= i %></option>
+<% }) %>
+    </select>"
+    <br>
+    (Taunt will be sent to your attacker if you win)
     </form>
     </div>
   </div>
