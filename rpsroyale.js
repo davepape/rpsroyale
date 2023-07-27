@@ -354,33 +354,6 @@ function oppositeResult(r) {
 
 
 
-/*
-
-async function findPlayerPlays(playerid) {
-    let db = await getDb();
-    return new Promise(function (resolve, reject) {
-        let collection = db.collection("plays");
-        let query = { playerid: playerid };
-        collection.find(query).toArray(function (err,result) {
-            if (err)
-                reject(err);
-            resolve(result);
-            });
-        });
-    }
-*/
-
-/*
-async function scoreboard(req, res) {
-    let db = await getDb();
-    let collection = db.collection("users");
-    return await collection.find().sort({points:-1}).toArray(function (err,result) {
-        if (err) { logMessage(err,req); return res.sendStatus(500); }
-        res.render('scoreboard', { players: result, user: req.session.rpsr_user });
-        });
-    }
-*/
-
 
 /*
 async function login(req, res) {
@@ -431,6 +404,47 @@ async function newAccount(req, res)
         }
     }
 
+
+async function randomName(req, res)
+    {
+    let name = await generateName();
+    if (!name)
+        return res.redirect('/newaccounterror');
+    let db = await getDb();
+    let collection = db.collection("users");
+    logMessage(`trying to create random-named account ${name}`, req);
+    let obj = { screenname: name, email: "", password: "x", actionpoints: STARTING_POINTS, score: 0, hasNewResults: true };
+    collection.insertOne(obj, function (err,result) {
+        if (err) { logMessage(err,req); return res.sendStatus(500); }
+        req.session.rpsr_user_id = result.insertedId;
+        req.session.username = obj.screenname;
+        res.redirect(`home`);
+        });
+    logMessage(`new account ${name}`, req);
+    }
+
+
+async function generateName()
+    {
+    let first = [ 'Random', 'Anonymous', 'Some', 'Other' ];
+    let second = [ 'Player', 'User', 'Person', 'Entity', 'Buffalonian' ];
+    let db = await getDb();
+    let collection = db.collection("users");
+    for (let i=0; i < 100; i++)
+        {
+        let name = choose(first) + ' ' + choose(second) + ' ' + Math.floor(Math.random()*100);
+        let query = { screenname: new RegExp(`^${name}$`,'i') };
+        let numExisting = await collection.count(query);
+        if (numExisting == 0)
+            return name;
+        }
+    return null;
+    }
+
+function choose(l)
+    {
+    return l[Math.floor(Math.random()*l.length)];
+    }
 
 function loginError(req, res)
     {
@@ -525,6 +539,7 @@ router.get('/logout', logout);
 router.get('/loginerror', loginError);
 router.post('/newaccount', newAccount);
 router.get('/newaccounterror', newAccountError);
+router.get('/randomname', randomName);
 router.get('/resetgame/:password', resetGame);
 router.get('/log/:password', log);
 router.get('/monitor/:password', monitor);
