@@ -65,5 +65,18 @@
     </div>
   </div>
 <% } %>
+<% if ((user) && (user.screenname == "Dave Pape")) { %>
+  <div class="row p-3">
+    <div class="col d-grid gap-1">
+      <a href="/log" class="btn btn-primary">Log</a>
+    </div>
+    <div class="col d-grid gap-1">
+      <a href="/monitor" class="btn btn-primary">Monitor</a>
+    </div>
+    <div class="col d-grid gap-1">
+      <a href="/resetgame" class="btn btn-primary">Reset Game</a>
+    </div>
+  </div>
+<% } %>
   </div>
 
