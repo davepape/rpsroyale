@@ -218,14 +218,14 @@ async function makeAttack(req,res)
 
 async function findDefense(req, res)
     {
-    let user = await playerByID(req.session.rpsr_user_id);
+    if (checkForBotDefender(req, res))
+        return;
     let db = await getDb();
-    let collection = db.collection("plays");
     let myID = req.session.rpsr_user_id;
     let otherID = req.body.opponent;
     let othertaunt = '';
     let query = { playerid: otherID };
-    collection.findOneAndDelete(query).then(async function (result) {
+    db.collection("plays").findOneAndDelete(query).then(async function (result) {
         let play = result.value;
         if (play)
             {
@@ -242,10 +242,42 @@ async function findDefense(req, res)
                 db.collection("autoWins").insertOne(autoWinQuery);
                 }
             else
+                {
+                let user = await playerByID(req.session.rpsr_user_id);
                 return res.render('matchfailed', { user: user });
+                }
             }
         resolveAttack(req, res, otherID, othermove, othertaunt);
         }).catch(function (err) { logMessage(err,req); return res.sendStatus(500); });
+    }
+
+const winningDefense = { 'rock': 'paper', 'paper': 'scissors', 'scissors': 'rock', 'cheat': 'win' };
+
+async function checkForBotDefender(req, res)
+    {
+    let db = await getDb();
+    let otherID = req.body.opponent;
+    let otherPlayer = await playerByID(otherID);
+    let othertaunt = randomTaunt();
+    if (otherPlayer.screenname == "Rock Bot")
+        {
+        let othermove = 'rock';
+        resolveAttack(req, res, otherID, othermove, othertaunt);
+        return true;
+        }
+    else if (otherPlayer.screenname == "Random Bot")
+        {
+        let othermove = choose(['rock', 'paper', 'scissors']);
+        resolveAttack(req, res, otherID, othermove, othertaunt);
+        return true;
+        }
+    else if (otherPlayer.screenname == "I-Always-Win Bot")
+        {
+        let othermove = winningDefense[validateMove(req.body.attack)];
+        resolveAttack(req, res, otherID, othermove, othertaunt);
+        return true;
+        }
+    return false;
     }
 
 async function resolveAttack(req, res, otherID, othermove, othertaunt)
@@ -456,6 +488,11 @@ function tauntPrefix()
     return choose(tauntPrefixes);
     }
 
+function randomTaunt()
+    {
+    let t = insultLists(1);
+    return `${tauntPrefix()} you ${t[0][0]} ${t[1][0]} ${t[2][0]}!`;
+    }
 
 /*
 async function login(req, res) {
