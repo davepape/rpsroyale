@@ -80,10 +80,11 @@ async function scoreboardPage(req, res) {
     let collection = db.collection("users");
     collection.find({}).sort({score:-1, screenname: 1}).toArray(async function (err, result) {
         if (err) { logMessage(err,req); return res.sendStatus(500); }
+        let userID = (user ? user._id : null);
         for (let i=0; i < result.length; i++)
             {
-            if ((user) && (result[i]._id == user._id))
-                result[i].css = 'table-active';
+            if (result[i]._id.toString() == userID)
+                result[i].css = 'table-primary';
             else
                 result[i].css = '';
             }
