@@ -680,7 +680,7 @@ router.get('/loginerror', loginError);
 router.post('/newaccount', newAccount);
 router.get('/newaccounterror', newAccountError);
 router.get('/randomname', randomName);
-router.get('/scanqr/:num', scanQR);
+router.get('/scanQR/:num', scanQR);
 router.get('/resetgame/:password', resetGame);
 router.get('/log/:password', log);
 router.get('/monitor/:password', monitor);
