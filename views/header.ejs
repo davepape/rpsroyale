@@ -19,38 +19,39 @@
     <a href="/" class="btn btn-primary">RPSR</a>
 <% } %>
     </div>
-    <div class="col">
+    <div class="col d-grid">
 <% if (user) { %>
+    <div class="text-white bg-secondary text-center rounded">
     Score: <%= user.score %>
-<% } %>
-    </div>
-    <div class="col">
-<% if (user) { %>
+    <br>
     Actions: <%= user.actionpoints %>
+    </div>
 <% } %>
     </div>
-    <div class="col">
+    <div class="col d-grid">
 <% if (user) { %>
+    <div class="text-white bg-secondary text-center rounded">
     <%= user.screenname %>
+    </div>
 <% } %>
     </div>
   </div>
   <div class="row">
-    <div class="col">
-<% if (user) { %>
-    <a href="/scoreboard" class="btn btn-info">Scores</a>
-<% } else { %>
-    <a href="/about" class="btn btn-primary">About</a>
-<% } %>
-    </div>
-    <div class="col">
+    <div class="col d-grid">
 <% if ((user) && (user.hasNewResults)) { %>
     <a href="/results" class="btn btn-danger">Results</a>
 <% } else if (user) { %>
     <a href="/results" class="btn btn-info">Results</a>
 <% } %>
     </div>
-    <div class="col">
+    <div class="col d-grid">
+<% if (user) { %>
+    <a href="/scoreboard" class="btn btn-info">Scores</a>
+<% } else { %>
+    <a href="/about" class="btn btn-primary">About</a>
+<% } %>
+    </div>
+    <div class="col d-grid">
 <% if (user) { %>
     <a href="/settings" class="btn btn-info"><span class="material-symbols-outlined">settings</span></a>
 <% } %>

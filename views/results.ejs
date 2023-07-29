@@ -11,7 +11,7 @@
     <td><%= r.time %></td>
     </tr>
 <% if (r.taunt != '') { %>
-    <tr><td colspan="4" class="text-center"><%= r.taunt %></td></tr>
+    <tr><td colspan="4" class="text-center"><%= r.other%> said "<%= r.taunt %>"</td></tr>
 <%  } %>
 <% }) %>
 </table>
