@@ -13,9 +13,25 @@
       <input type="submit" name="submitter" value="That's my name!" class="btn btn-primary">
       </form>
     </div>
+  </div>
+  <div class="row">
     <div class="md-8 text-center p-3">
       <br><br>
       <a id="nonamebutton" href="/randomname" class="btn btn-primary">No! Pick one for me</a>
     </div>
+  <div class="row">
+    <div class="md-8 text-center p-3">
+<br><br><br>
+<button class="btn btn-primary">Actually, I already have an account:</button>
+<form method="POST" action="/loginEmail">
+My email address: <input type="text" name="email" value="">
+<br>
+<input type="submit" value="Send me a link!">
+</form>
+<br>
+(You will be sent an email with a link that will log you in to your game.)
+    </div>
+  </div>
+
   </div>
 <%- include('footer'); %>

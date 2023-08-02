@@ -1,8 +1,17 @@
 <%- include('header'); %>
   <div class="row">
     <div class="md-8 text-center p-3">
-    This is the settings page.
-<br> There is nothing to do here right now.
+SETTINGS
+<br><br>
+<form method="POST" action="settingsEmail">
+Your email address: <input type="text" name="email" value="<%= user.email %>">
+<br><br>
+<input type="submit" value="submit">
+</form>
+<br>
+Set an email address if you want to be able to log in from another device (or if you delete cookies on this device).
+<br>
+Your address will not be shared with anyone else, and will not be used to spam you.
     </div>
   </div>
 <%- include('footer'); %>

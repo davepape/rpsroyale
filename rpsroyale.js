@@ -1,6 +1,7 @@
 const path = require('path');
-const bcrypt = require('bcrypt');
+const md5 = require('md5');
 const { body, validationResult } = require('express-validator');
+const nodemailer = require('nodemailer');
 
 const { MongoClient, ServerApiVersion, ObjectID } = require('mongodb');
 const uri = process.env.ATLAS_URI;
@@ -38,6 +39,10 @@ async function index(req, res) {
 
 async function welcomePage(req, res) {
     res.render('welcome', { user: null } );
+    }
+
+async function loginPage(req, res) {
+    res.render('login', { user: null, error: null } );
     }
 
 async function aboutPage(req, res) {
@@ -95,7 +100,7 @@ async function scoreboardPage(req, res) {
 async function settingsPage(req, res) {
     if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
-    res.render('settings', { user: user });
+    res.render('settings', { user: user, email: "" });
     }
 
 async function resultsPage(req, res) {
@@ -201,6 +206,7 @@ async function makeDefense(req,res) {
                 }
             });
     }
+
 
 async function makeAttack(req,res)
     {
@@ -530,7 +536,7 @@ async function newAccount(req, res)
     logMessage(`trying to create account ${req.body.yourname}`, req);
     let numExisting = await collection.count(query);
     if (numExisting == 0) {
-        let obj = { screenname: req.body.yourname, email: "", password: "x", actionpoints: STARTING_POINTS, score: 0, hasNewResults: false };
+        let obj = { screenname: req.body.yourname, email: "", actionpoints: STARTING_POINTS, score: 0, hasNewResults: false };
         collection.insertOne(obj, function (err,result) {
             if (err) { logMessage(err,req); return res.sendStatus(500); }
             req.session.rpsr_user_id = result.insertedId;
@@ -553,7 +559,7 @@ async function randomName(req, res)
     let db = await getDb();
     let collection = db.collection("users");
     logMessage(`trying to create random-named account ${name}`, req);
-    let obj = { screenname: name, email: "", password: "x", actionpoints: STARTING_POINTS, score: 0, hasNewResults: false };
+    let obj = { screenname: name, email: "", actionpoints: STARTING_POINTS, score: 0, hasNewResults: false };
     collection.insertOne(obj, function (err,result) {
         if (err) { logMessage(err,req); return res.sendStatus(500); }
         req.session.rpsr_user_id = result.insertedId;
@@ -606,6 +612,79 @@ function logout(req, res)
     req.session.destroy(function (err) {
         if (err) { logMessage(err,req); return res.sendStatus(500); }
         res.redirect(`.`);
+        });
+    }
+
+
+async function settingsEmail(req,res)
+    {
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
+    let db = await getDb();
+    let checkQuery = { email:  new RegExp(`^${req.body.email}$`,'i') };
+    let numExisting = await db.collection("users").count(checkQuery);
+    if (numExisting > 0)
+        return res.redirect("/settingsEmailFailed");
+    let user = await playerByID(req.session.rpsr_user_id);
+    let query = { _id: ObjectID(req.session.rpsr_user_id) };
+    let operation = { $set: { email: req.body.email } };
+    db.collection("users").updateOne(query, operation);
+    res.redirect('/game');
+    }
+
+
+async function settingsEmailFailed(req, res) {
+    if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
+    let user = await playerByID(req.session.rpsr_user_id);
+    res.render('settingsEmailFailed', { user: user });
+    }
+
+
+async function loginEmail(req,res)
+    {
+    let db = await getDb();
+    let query = { email:  new RegExp(`^${req.body.email}$`,'i') };
+    db.collection("users").findOne(query, async function (err,result) {
+        if (err) { logMessage(err,req); return res.render('login', { user: null, error: 'The email address you gave was not found in our database' }); }
+        if (!result) { logMessage(`login email (${req.body.email}) not found`,req); return res.render('login', { user: null, error: 'The email address you gave was not found in our database' }); }
+        let user = result;
+        let loginCode = md5(user.email + Math.random().toString());
+        let operation = { $set: { loginCode: loginCode } };
+        db.collection("users").updateOne(query, operation);
+        let transporter = nodemailer.createTransport({
+            host: process.env.RPSR_EMAIL_SERVER,
+            port: 587,
+            secure: false,
+            requireTLS: true,
+            tls: { rejectUnauthorized: false },
+            auth: {
+                user: process.env.RPSR_EMAIL_ADDRESS,
+                pass: process.env.RPSR_EMAIL_PASSWORD,
+                }
+            });
+        let mailOptions = {
+            from: `Rock Paper Scissors Royale <${process.env.RPSR_EMAIL_ADDRESS}>`,
+            to: user.email,
+            subject: `login link for Rock Paper Scissors Royale`,
+            text: `Hello, you requested to log back in to Rock Paper Scissors Royale.  Use this link to do so: https://rpsroyale.org/login/${loginCode}`
+            };
+        transporter.sendMail(mailOptions, function (err,info) { if (err) logMessage(err,req); else logMessage(`mail sent to ${user.email}`, req); });
+        res.render('loginEmailSent', {user:null});
+        });
+    }
+
+
+async function loginCode(req,res)
+    {
+    console.log(`logincode ${req.params.code}`);
+    let db = await getDb();
+    let query = { loginCode:  req.params.code };
+    db.collection("users").findOne(query, async function (err,result) {
+console.log(result);
+        if (err) { logMessage(err,req); return res.sendStatus(500); }
+        if (!result) { logMessage(`login with code ${req.params.code} failed`,req); return res.sendStatus(500); }
+        req.session.rpsr_user_id = result._id;
+        req.session.username = result.screenname;
+        return res.redirect(`/game`);
         });
     }
 
@@ -676,6 +755,9 @@ router.get('/settings', settingsPage);
 router.get('/results', resultsPage);
 router.post('/makedefense', makeDefense);
 router.post('/makeattack', makeAttack);
+router.get('/login', loginPage);
+router.post('/loginEmail', loginEmail);
+router.get('/login/:code', loginCode);
 router.get('/logout', logout);
 router.get('/loginerror', loginError);
 router.post('/newaccount', newAccount);
@@ -685,5 +767,7 @@ router.get('/scanQR/:num', scanQR);
 router.get('/resetgame/:password', resetGame);
 router.get('/log/:password', log);
 router.get('/monitor/:password', monitor);
+router.post('/settingsEmail', settingsEmail);
+router.get('/settingsEmailFailed', settingsEmailFailed);
 
 module.exports = router;
