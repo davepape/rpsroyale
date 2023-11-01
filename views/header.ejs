@@ -81,3 +81,47 @@
 <% } %>
   </div>
 
+<div id="gameUpdateModal" class="modal" tabindex="-1"> 
+            <div class="modal-dialog"> 
+                <div class="modal-content"> 
+                    <div class="modal-header"> 
+                        <h5 class="modal-title"> Update </h5> 
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"> 
+                        </button> 
+                    </div> 
+                    <div class="modal-body"> 
+                        <p id="gameUpdateMessage"> 
+                            New information just in!
+                        </p> 
+                    </div> 
+                    <div class="modal-footer"> 
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> 
+                            Close 
+                        </button> 
+                    </div> 
+                </div> 
+            </div> 
+</div>
+<% if (user) { %>
+<script>
+let myModal = new bootstrap.Modal(document.getElementById('gameUpdateModal'));
+
+function sendMyName()
+    {
+    if (ws.readyState == WebSocket.OPEN)
+        {
+        ws.send('<%= user._id %>');
+        }
+    }
+
+function receiveData(msg) 
+    {
+    document.querySelector('#gameUpdateMessage').innerHTML = msg.data;
+    myModal.show();
+    }
+
+ws = new WebSocket('wss://rpsroyale.org:7081');
+ws.addEventListener('open',sendMyName);
+ws.addEventListener('message',receiveData);
+</script>
+<% } %>

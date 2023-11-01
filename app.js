@@ -32,4 +32,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', require('./rpsroyale.js'));
 
-let server = app.listen(8079, function () {});
+/*
+ let server = app.listen(8079, function () {});
+*/
+/* This tells Passenger to use this instance of express as the "main" server (at port 80) */
+if (typeof(PhusionPassenger) != 'undefined') {
+    PhusionPassenger.configure({ autoInstall: false });
+    let server = app.listen('passenger', function () {});
+    }
+else {
+    let server = app.listen(8079, function () {});
+    }

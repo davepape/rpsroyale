@@ -26,6 +26,7 @@ async function getDb() {
 
 async function rootPage(req, res) {
     if (req.session.rpsr_user_id) { return res.redirect('/game'); }
+    return res.redirect('/welcome');
     return res.sendStatus(404);
     }
 
@@ -159,23 +160,6 @@ async function game(req, res) {
     }
 
 
-async function logMessage(message,req)
-    {
-    let db = await getDb();
-    let collection = db.collection("log");
-    if ((req) && (req.session.username))
-        name = req.session.username;
-    else
-        name = "unknown player";
-    let record = { user: name,
-                   timestamp: Date.now(),
-                   message: message };
-    collection.insertOne(record);
-    if (logToConsole)
-        console.log(message);
-    }
-
-
 async function makeDefense(req,res) {
     if (!req.session.rpsr_user_id) { return res.redirect('/welcome'); }
     let user = await playerByID(req.session.rpsr_user_id);
@@ -225,7 +209,7 @@ async function makeAttack(req,res)
 
 async function findDefense(req, res)
     {
-    if (checkForBotDefender(req, res))
+    if (await checkForBotDefender(req, res))
         return;
     let db = await getDb();
     let myID = req.session.rpsr_user_id;
@@ -315,6 +299,7 @@ async function resolveAttack(req, res, otherID, othermove, othertaunt)
         });
     updatePlayerScore(req.session.rpsr_user_id, matchRes.mypoints, false);
     updatePlayerScore(otherID, matchRes.otherpoints, true);
+    notifyOtherPlayer(otherID, username, matchRes.result, matchRes.taunt);
     user = await playerByID(req.session.rpsr_user_id);
     res.render('matchresult', { user: user, mymove: mymove, oppmove: othermove, oppname: othername, matchRes: matchRes });
     }
@@ -439,7 +424,7 @@ async function scanQR(req,res)
         if (result)
             {
             let lastVisit = new Date(result.timestamp);
-            lastVisit.setHours(lastVisit.getHours() + 1);
+            lastVisit.setMinutes(lastVisit.getMinutes() + 10);
             let now = new Date();
             if (now >= lastVisit)
                 okToAdd = true;
@@ -679,12 +664,62 @@ async function loginCode(req,res)
     let db = await getDb();
     let query = { loginCode:  req.params.code };
     db.collection("users").findOne(query, async function (err,result) {
-console.log(result);
         if (err) { logMessage(err,req); return res.sendStatus(500); }
         if (!result) { logMessage(`login with code ${req.params.code} failed`,req); return res.sendStatus(500); }
         req.session.rpsr_user_id = result._id;
         req.session.username = result.screenname;
         return res.redirect(`/game`);
+        });
+    }
+
+
+/* Create the WebSocket server, which will use port 7081 */
+/* Be aware that if you have this app running via Passenger, and then also
+  try to run it manually at the same time (for debugging), it may die
+  because of two separate processes trying to both use the same port.  */
+const { WebSocket, WebSocketServer } = require('ws');
+
+/* const httpserver = require('http').createServer(); */
+
+const https = require('https');
+const fs = require('fs');
+
+const options = {
+  key: fs.readFileSync('rsakey.txt'),
+  cert: fs.readFileSync('certificate.txt')
+};
+
+const httpserver = https.createServer(options);
+
+const wss = new WebSocketServer({server: httpserver}, function () {});
+
+httpserver.listen(7081);
+
+wss.on('connection', socketNewConnection);
+
+function socketNewConnection(ws) 
+    {
+    ws.on('message', function (data) { socketReceiveData(data,ws); });
+    }
+
+function socketReceiveData(data,ws)
+    {
+    ws.user = data;
+    }
+
+function notifyOtherPlayer(id, oppName, result, taunt)
+    {
+    let message = '[message goes here]';
+    if (result == 'L')
+        message = `You just beat ${oppName}`;
+    else if (result == 'T')
+        message = `You just tied with ${oppName}`;
+    else
+        message = `${oppName} just beat you.<br>They said "${taunt}!"`;
+    wss.clients.forEach(function (client) {
+        if ((client.user == id) && (client.readyState === WebSocket.OPEN)) {
+            client.send(message, { binary: false });
+            }
         });
     }
 
@@ -737,6 +772,23 @@ async function monitor(req, res)
         if (err) { logMessage(err,req); return res.sendStatus(500); }
         res.render('monitor', { users: result });
         });
+    }
+
+
+async function logMessage(message,req)
+    {
+    let db = await getDb();
+    let collection = db.collection("log");
+    if ((req) && (req.session.username))
+        name = req.session.username;
+    else
+        name = "unknown player";
+    let record = { user: name,
+                   timestamp: Date.now(),
+                   message: message };
+    collection.insertOne(record);
+    if (logToConsole)
+        console.log(message);
     }
 
 

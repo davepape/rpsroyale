@@ -26,4 +26,4 @@ async function giveEveryoneActionPoints(points)
         });
     }
 
-giveEveryoneActionPoints(1);
+giveEveryoneActionPoints(2);

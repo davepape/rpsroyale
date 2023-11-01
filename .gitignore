@@ -134,3 +134,5 @@ package-lock.json
 .htaccess
 *.swp
 favicon.*
+certificate.txt
+rsakey.txt
